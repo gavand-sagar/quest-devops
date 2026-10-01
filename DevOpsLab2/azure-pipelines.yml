@@ -1,0 +1,53 @@
+# DEMO 02 - VARIABLES
+# Concepts: pipeline variables, predefined variables, macro syntax $(),
+#           env mapping, setting a variable at runtime (task.setvariable)
+
+trigger:
+- demo/02-variables
+
+pool:
+  vmImage: ubuntu-latest
+
+# Pipeline-level variables (available to every step)
+variables:
+  appName: 'SagarApp'
+  buildConfig: 'Release'
+  version: '1.0.0'
+
+steps:
+# Macro syntax $(var) is replaced before the step runs
+- script: |
+    echo "App:     $(appName)"
+    echo "Config:  $(buildConfig)"
+    echo "Version: $(version)"
+  displayName: 'Read custom variables'
+
+# Predefined variables provided by Azure DevOps
+- script: |
+    echo "Build ID:     $(Build.BuildId)"
+    echo "Build Number: $(Build.BuildNumber)"
+    echo "Branch:       $(Build.SourceBranchName)"
+    echo "Repo:         $(Build.Repository.Name)"
+    echo "Agent OS:     $(Agent.OS)"
+    echo "Sources dir:  $(Build.SourcesDirectory)"
+  displayName: 'Read predefined variables'
+
+# Variables are also exposed as environment variables:
+# name uppercased, '.' replaced by '_'  (appName -> APPNAME)
+- bash: |
+    echo "From env: $APPNAME / $BUILD_BUILDID"
+    echo "Mapped env: $MY_VERSION"
+  env:
+    MY_VERSION: $(version)     # explicit env mapping
+  displayName: 'Variables as environment variables'
+
+# Create / update a variable at runtime for the NEXT steps
+- bash: |
+    echo "##vso[task.setvariable variable=buildTime]$(date +%H:%M:%S)"
+    echo "##vso[task.setvariable variable=version]2.0.0"
+  displayName: 'Set variables at runtime'
+
+- script: |
+    echo "Build time:      $(buildTime)"
+    echo "Updated version: $(version)"
+  displayName: 'Read runtime variables'

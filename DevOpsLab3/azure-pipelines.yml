@@ -1,0 +1,50 @@
+# DEMO 03 - STAGES & JOBS
+# Concepts: hierarchy Pipeline -> Stages -> Jobs -> Steps,
+#           stage/job displayName, pool per job, stages run in order by default
+
+trigger:
+- demo/03-stages-jobs
+
+# Default pool for all jobs (a job can override it)
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+# Stage 1: runs first
+- stage: Build
+  displayName: 'Build Stage'
+  jobs:
+  - job: Compile
+    displayName: 'Compile Job'
+    steps:
+    - script: echo "Compiling on $(Agent.OS)..."
+      displayName: 'Compile'
+
+  # Jobs inside the same stage run in PARALLEL (each on its own agent)
+  - job: Lint
+    displayName: 'Lint Job'
+    steps:
+    - script: echo "Linting..."
+      displayName: 'Lint'
+
+# Stage 2: waits for Build (stages run sequentially by default)
+- stage: Test
+  displayName: 'Test Stage'
+  jobs:
+  - job: UnitTests
+    displayName: 'Unit Tests on Windows'
+    pool:
+      vmImage: windows-latest   # job-level pool override
+    steps:
+    - script: echo Running unit tests on %AGENT_OS%
+      displayName: 'Run tests'
+
+# Stage 3: waits for Test
+- stage: Deploy
+  displayName: 'Deploy Stage'
+  jobs:
+  - job: DeployApp
+    displayName: 'Deploy App'
+    steps:
+    - script: echo "Deploying..."
+      displayName: 'Deploy'

@@ -1,0 +1,32 @@
+# DEMO 01 - BASICS
+# Concepts: trigger, pool, steps, script / bash / pwsh, displayName
+
+# Run the pipeline when a commit is pushed to this branch
+trigger:
+- demo/01-basics
+
+# The agent machine that runs the job (Microsoft-hosted)
+pool:
+  vmImage: ubuntu-latest
+
+# Steps run sequentially on the same agent
+steps:
+# 'script' = cmd on Windows, bash on Linux/macOS
+- script: echo "Hello from Demo 01"
+  displayName: 'Single-line script'
+
+# '|' keeps line breaks -> multi-line script
+- script: |
+    echo "Line 1"
+    echo "Line 2"
+  displayName: 'Multi-line script'
+
+# 'bash' always runs Bash
+- bash: |
+    echo "OS: $(uname -a)"
+    echo "Working dir: $(pwd)"
+  displayName: 'Bash step'
+
+# 'pwsh' runs PowerShell Core (cross-platform)
+- pwsh: Write-Host "Hello from PowerShell Core"
+  displayName: 'PowerShell step'

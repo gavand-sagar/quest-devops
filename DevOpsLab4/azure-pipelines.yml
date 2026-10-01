@@ -1,0 +1,83 @@
+# DEMO 04 - DEPENDSON & CONDITIONS
+# Concepts: dependsOn (fan-out / fan-in), dependsOn: [] (run in parallel),
+#           conditions: succeeded(), failed(), always(), custom conditions,
+#           continueOnError
+
+trigger:
+- demo/04-dependson-conditions
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  runOptional: 'false'
+
+stages:
+- stage: CI
+  jobs:
+  # A: no dependsOn -> starts immediately
+  - job: A
+    steps:
+    - script: echo "Job A"
+
+  # B and C both depend on A -> FAN-OUT (run in parallel after A)
+  - job: B
+    dependsOn: A
+    steps:
+    - script: echo "Job B"
+
+  - job: C
+    dependsOn: A
+    steps:
+    # Step fails but job continues -> job result = SucceededWithIssues
+    - script: exit 1
+      displayName: 'Failing step (continueOnError)'
+      continueOnError: true
+    - script: echo "Job C still running"
+
+  # D waits for both B and C -> FAN-IN
+  - job: D
+    dependsOn: [B, C]
+    steps:
+    - script: echo "Job D (after B and C)"
+
+  # Runs ONLY if a dependency failed -> will be SKIPPED here
+  - job: OnFailure
+    dependsOn: D
+    condition: failed()
+    steps:
+    - script: echo "Something failed - send alert"
+
+  # Runs whether dependencies passed, failed or were cancelled
+  - job: Cleanup
+    dependsOn: D
+    condition: always()
+    steps:
+    - script: echo "Cleanup always runs"
+
+  # Custom condition: succeeded AND a variable check -> SKIPPED (runOptional=false)
+  - job: Optional
+    dependsOn: D
+    condition: and(succeeded(), eq(variables.runOptional, 'true'))
+    steps:
+    - script: echo "Optional job"
+
+# Stage-level dependsOn and condition
+- stage: CD
+  dependsOn: CI
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/heads/demo/'))
+  jobs:
+  - job: Deploy
+    steps:
+    - script: echo "Deploying from $(Build.SourceBranchName)"
+    # Step-level condition
+    - script: echo "Runs only on Linux agent"
+      condition: eq(variables['Agent.OS'], 'Linux')
+
+# dependsOn: [] -> no dependency, runs in PARALLEL with CI
+- stage: Security
+  dependsOn: []
+  jobs:
+  - job: Scan
+    steps:
+    - script: echo "Security scan runs alongside CI"
